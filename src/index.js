@@ -9,15 +9,36 @@ app.use(
   })
 );
 
-app.get("/hello", cors(), function (req, res, next) {
-  res.send("world");
+app.get("/canary/get", cors(), function (req, res, next) {
+  console.info("Handling canary get. connectCheckID =", req.query.id);
+  res.send("hello");
   res.end();
 });
 
-app.ws("/", cors(), function (ws, req) {
-  ws.on("hello", function (msg) {
-    res.send("world");
-  });
+app.ws("/canary/websocket", function (ws, req) {
+  console.info(
+    "Handling canary websocket. connectCheckID =",
+    req.query.id,
+    ", wSecWebSocketProtocolHeader =",
+    req.query.wSecWebSocketProtocolHeader
+  );
+  console.info("Sending hello message");
+  ws.send("hello");
+  let closed = false;
+  const onClose = () => {
+    console.info("Socket closed.");
+    closed = true;
+    ws.removeEventListener("close", onClose);
+  };
+  ws.addEventListener("close", onClose);
+  setTimeout(() => {
+    if (!closed) {
+      console.info("Closing socket.");
+      closed = true;
+      ws.removeEventListener("close", onClose);
+      ws.close();
+    }
+  }, 10_000);
 });
 
 app.listen(3000);
